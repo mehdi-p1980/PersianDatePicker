@@ -1,0 +1,183 @@
+<div class="input-group">
+    <input type="text" class="form-control" @bind="FormattedValue" />
+    <button class="btn btn-outline-secondary" type="button" @onclick="ToggleCalendar">
+        <span class="oi oi-calendar"></span>
+    </button>
+</div>
+
+@if (showCalendar)
+{
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between">
+                <button class="btn btn-sm btn-outline-primary" @onclick="PreviousMonth">&lt;</button>
+                <span>@GetMonthYearString()</span>
+                <button class="btn btn-sm btn-outline-primary" @onclick="NextMonth">&gt;</button>
+            </div>
+            <div class="d-flex justify-content-end">
+                <button class="btn btn-sm btn-outline-secondary" @onclick="ToggleCalendarType">
+                    @(isPersian ? "Gregorian" : "Persian")
+                </button>
+            </div>
+            <table class="table table-bordered text-center">
+                <thead>
+                    <tr>
+                        <th>Su</th>
+                        <th>Mo</th>
+                        <th>Tu</th>
+                        <th>We</th>
+                        <th>Th</th>
+                        <th>Fr</th>
+                        <th>Sa</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < 6; i++)
+                    {
+                        <tr>
+                            @for (int j = 0; j < 7; j++)
+                            {
+                                var day = GetDay(i, j);
+                                if (day != null)
+                                {
+                                    var classes = "day";
+                                    if (day.Value.Date == Value.Date)
+                                    {
+                                        classes += " active";
+                                    }
+                                    if (day.Value.Month != currentDate.Month)
+                                    {
+                                        classes += " other-month";
+                                    }
+                                    <td class="@classes" @onclick="() => SelectDate(day.Value)">@day.Value.Day</td>
+                                }
+                                else
+                                {
+                                    <td></td>
+                                }
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="d-flex justify-content-center">
+                <input type="time" class="form-control" @bind="TimeValue" />
+            </div>
+        </div>
+    </div>
+}
+
+@using System.Globalization
+@code {
+    private PersianCalendar persianCalendar = new PersianCalendar();
+    [Parameter]
+    public DateTime Value { get; set; }
+
+    [Parameter]
+    public EventCallback<DateTime> ValueChanged { get; set; }
+
+    private bool showCalendar;
+    private DateTime currentDate = DateTime.Now;
+    private bool isPersian;
+
+    private string FormattedValue
+    {
+        get => Value.ToString("yyyy-MM-dd HH:mm");
+        set
+        {
+            if (DateTime.TryParse(value, out var date))
+            {
+                Value = date;
+                ValueChanged.InvokeAsync(Value);
+            }
+        }
+    }
+
+    private void ToggleCalendar()
+    {
+        showCalendar = !showCalendar;
+    }
+
+    private void PreviousMonth()
+    {
+        currentDate = currentDate.AddMonths(-1);
+    }
+
+    private void NextMonth()
+    {
+        currentDate = currentDate.AddMonths(1);
+    }
+
+    private DateTime? GetDay(int week, int dayOfWeek)
+    {
+        var firstDayOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
+        var firstDayOfWeek = (int)firstDayOfMonth.DayOfWeek;
+        var day = (week * 7) + dayOfWeek - firstDayOfWeek + 1;
+        if (day > 0 && day <= DateTime.DaysInMonth(currentDate.Year, currentDate.Month))
+        {
+            return new DateTime(currentDate.Year, currentDate.Month, day);
+        }
+        return null;
+    }
+
+    private TimeSpan TimeValue
+    {
+        get => Value.TimeOfDay;
+        set
+        {
+            Value = Value.Date + value;
+            ValueChanged.InvokeAsync(Value);
+        }
+    }
+
+    private void SelectDate(DateTime date)
+    {
+        Value = new DateTime(date.Year, date.Month, date.Day, Value.Hour, Value.Minute, Value.Second);
+        ValueChanged.InvokeAsync(Value);
+        showCalendar = false;
+    }
+
+    private void ToggleCalendarType()
+    {
+        isPersian = !isPersian;
+    }
+
+    private string GetMonthYearString()
+    {
+        if (isPersian)
+        {
+            return $"{persianCalendar.GetMonth(currentDate)}/{persianCalendar.GetYear(currentDate)}";
+        }
+        else
+        {
+            return currentDate.ToString("MMMM yyyy");
+        }
+    }
+
+    private DateTime? GetDay(int week, int dayOfWeek)
+    {
+        if (isPersian)
+        {
+            var year = persianCalendar.GetYear(currentDate);
+            var month = persianCalendar.GetMonth(currentDate);
+            var firstDayOfMonth = persianCalendar.ToDateTime(year, month, 1, 0, 0, 0, 0);
+            var firstDayOfWeek = (int)firstDayOfMonth.DayOfWeek;
+            var day = (week * 7) + dayOfWeek - firstDayOfWeek + 1;
+            if (day > 0 && day <= persianCalendar.GetDaysInMonth(year, month))
+            {
+                return persianCalendar.ToDateTime(year, month, day, 0, 0, 0, 0);
+            }
+        }
+        else
+        {
+            var firstDayOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
+            var firstDayOfWeek = (int)firstDayOfMonth.DayOfWeek;
+            var day = (week * 7) + dayOfWeek - firstDayOfWeek + 1;
+            if (day > 0 && day <= DateTime.DaysInMonth(currentDate.Year, currentDate.Month))
+            {
+                return new DateTime(currentDate.Year, currentDate.Month, day);
+            }
+        }
+        return null;
+    }
+}

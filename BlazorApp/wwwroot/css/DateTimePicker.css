@@ -1,0 +1,16 @@
+.day {
+    cursor: pointer;
+}
+
+.day:hover {
+    background-color: #eee;
+}
+
+.day.active {
+    background-color: #0d6efd;
+    color: #fff;
+}
+
+.other-month {
+    color: #ccc;
+}
